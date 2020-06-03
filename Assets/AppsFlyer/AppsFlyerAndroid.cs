@@ -10,6 +10,7 @@ namespace AppsFlyerSDK
     {
 
         private static AndroidJavaClass appsFlyerAndroid = new AndroidJavaClass("com.appsflyer.unity.AppsFlyerAndroidWrapper");
+        private static AppsFlyerTrackingRequestAndroidProxy appsFlyerTrackingRequestProxy;
 
 
         /// <summary>
@@ -22,7 +23,17 @@ namespace AppsFlyerSDK
         {
 #if !UNITY_EDITOR
              appsFlyerAndroid.CallStatic("initSDK", devkey, gameObject ? gameObject.name : null);
+             initTrackingRequestListener();
 #endif
+        }
+
+        public static void initTrackingRequestListener()
+        {
+            if (appsFlyerTrackingRequestProxy == null)
+            {
+                appsFlyerTrackingRequestProxy = new AppsFlyerTrackingRequestAndroidProxy();
+                appsFlyerAndroid.CallStatic("registerTrackingRequestHandler", appsFlyerTrackingRequestProxy);
+            }
         }
 
         /// <summary>
@@ -319,6 +330,14 @@ namespace AppsFlyerSDK
         {
 #if !UNITY_EDITOR
             appsFlyerAndroid.CallStatic("trackEvent", eventName, convertDictionaryToJavaMap(eventValues));
+#endif
+        }
+
+        public static void sendEvent(string eventName, Dictionary<string, string> eventValues, Action onSuccess, Action<string> onFailure)
+        {
+#if !UNITY_EDITOR
+            int callbackId = appsFlyerTrackingRequestProxy.RegisterCallback(onSuccess, onFailure);
+            appsFlyerAndroid.CallStatic("trackEventWithCallback", eventName, convertDictionaryToJavaMap(eventValues), callbackId);
 #endif
         }
 

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -51,7 +52,6 @@ namespace AppsFlyerSDK
 #elif UNITY_ANDROID && !UNITY_EDITOR
             AppsFlyerAndroid.initSDK(devKey, gameObject);
 #else
-
 #endif
         }
 
@@ -83,6 +83,17 @@ namespace AppsFlyerSDK
             AppsFlyeriOS.sendEvent(eventName, eventValues);
 #elif UNITY_ANDROID && !UNITY_EDITOR
             AppsFlyerAndroid.sendEvent(eventName, eventValues);
+#else
+
+#endif
+        }
+        
+        public static void sendEvent(string eventName, Dictionary<string, string> eventValues, Action onSuccess, Action<string> onFailure)
+        {
+#if UNITY_IOS && !UNITY_EDITOR
+            throw new NotImplementedException("Not implemented in iOS");
+#elif UNITY_ANDROID && !UNITY_EDITOR
+            AppsFlyerAndroid.sendEvent(eventName, eventValues, onSuccess, onFailure);
 #else
 
 #endif

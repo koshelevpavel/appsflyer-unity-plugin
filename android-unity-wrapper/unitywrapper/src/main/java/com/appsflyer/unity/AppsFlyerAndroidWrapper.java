@@ -1,9 +1,12 @@
 package com.appsflyer.unity;
 
 
+import android.os.Handler;
+
 import com.appsflyer.AFLogger;
 import com.appsflyer.AppsFlyerConversionListener;
 import com.appsflyer.AppsFlyerInAppPurchaseValidatorListener;
+import com.appsflyer.AppsFlyerTrackingRequestListener;
 import com.appsflyer.AppsFlyerLib;
 import com.appsflyer.AppsFlyerProperties;
 import com.appsflyer.CreateOneLinkHttpTask;
@@ -28,6 +31,8 @@ public class AppsFlyerAndroidWrapper {
     private static final String GENERATE_LINK_CALLBACK = "onInviteLinkGenerated";
     private static final String GENERATE_LINK_ERROR_CALLBACK = "onInviteLinkGeneratedFailure";
     private static AppsFlyerConversionListener conversionListener;
+    private static ITrackingRequestUnityHandler trackingRequestUnityHandler;
+    private static Handler unityMainThreadHandler;
 
     public static void initSDK(String devKey, String objectName) {
         if (conversionListener == null && objectName != null){
@@ -36,6 +41,19 @@ public class AppsFlyerAndroidWrapper {
 
         AppsFlyerLib.getInstance().init(devKey, conversionListener, UnityPlayer.currentActivity);
         AppsFlyerLib.getInstance().setExtension("unity_android_5.3.0");
+    }
+
+    public static void registerTrackingRequestHandler(ITrackingRequestUnityHandler handler){
+        trackingRequestUnityHandler = handler;
+        if(unityMainThreadHandler == null) {
+            unityMainThreadHandler = new Handler();
+        }
+    }
+
+    public static void runOnUnityThread(Runnable runnable) {
+        if(unityMainThreadHandler != null && runnable != null) {
+            unityMainThreadHandler.post(runnable);
+        }
     }
 
     public static void startTracking() {
@@ -129,6 +147,12 @@ public class AppsFlyerAndroidWrapper {
 
     public static void trackLocation(double latitude, double longitude) {
         AppsFlyerLib.getInstance().trackLocation(UnityPlayer.currentActivity, latitude, longitude);
+    }
+
+    public static void trackEventWithCallback(String eventName, HashMap<String, Object> eventValues, int callbackId) {
+        if(trackingRequestUnityHandler != null){
+            AppsFlyerLib.getInstance().trackEvent(UnityPlayer.currentActivity, eventName, eventValues, getTrackingRequestListener(callbackId));
+        }
     }
 
     public static void trackEvent(String eventName, HashMap<String, Object> eventValues) {
@@ -238,7 +262,6 @@ public class AppsFlyerAndroidWrapper {
         };
     }
 
-
     public static void initInAppPurchaseValidatorListener(final String objectName) {
         AppsFlyerLib.getInstance().registerValidatorListener(UnityPlayer.currentActivity, new AppsFlyerInAppPurchaseValidatorListener() {
             @Override
@@ -306,6 +329,29 @@ public class AppsFlyerAndroidWrapper {
                 }
             }
         });
+    }
 
+    private static AppsFlyerTrackingRequestListener getTrackingRequestListener(final int callbackId){
+
+        return new AppsFlyerTrackingRequestListener() {
+            @Override
+            public void onTrackingRequestSuccess() {
+                runOnUnityThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        trackingRequestUnityHandler.onTrackingRequestSuccess(callbackId);
+                    }
+                });
+            }
+            @Override
+            public void onTrackingRequestFailure(final String error) {
+                runOnUnityThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        trackingRequestUnityHandler.onTrackingRequestFailure(callbackId, error);
+                    }
+                });
+            }
+        };
     }
 }
